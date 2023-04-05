@@ -16,9 +16,6 @@ The game protocol involves nine message types:
 • RSGN
 • DRAW message
 • OVER outcome reason
-Figure 1 shows an example of communication between the server and two clients during the
-set-up and first two moves of a game. Figure 2 shows two proposed draws, the first rejected and the
-second accepted.
 3.1 Message format
 Messages are broken into fields. A field consists of one or more characters, followed by a vertical bar.
 The first field is always a four-character code. The second field gives the length of the remaining
