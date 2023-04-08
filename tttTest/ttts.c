@@ -1,6 +1,8 @@
 #include "protocol.h"
+#include "uthash.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -9,6 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+
 #define SERVER_PORT 5037
 #define MAX_CLIENTS 64
 
@@ -16,13 +19,26 @@ typedef struct {
     int player1_socket;
     int player2_socket;
     char board[10];
-    char current_player;
+    // create hashmap for player names and socket numbers
+    //struct Player *players;
     pthread_mutex_t mutex;
 } GameState;
 
-void *game_thread(void *arg);
-void player_thread(void *arg);
 
+typedef struct {
+    int socket;
+    char name[50];
+    UT_hash_handle hh;
+} Player;
+
+void *game_thread(void *arg);
+void update_game_state(GameState* game_state, int player, const char* move);
+int add_player(int socket, const char* name);
+Player* find_player(int socket);
+void remove_player(Player* p);
+void free_players();
+
+Player* players = NULL;
 
 int main() {
     int server_socket, opt = 1;
@@ -92,14 +108,56 @@ int main() {
     close(server_socket);
 }
 
+
+
 void* game_thread(void* arg) {
     GameState* game_state = (GameState*) arg;
 
     // Initialize the game state
     // Implement game initialization logic here
-    // ...
-    char initial_board[10] = {'.', '.', '.', '.', '.', '.', '.', '.', '.', '.'};
+
+    // Initialize game board
+    char initial_board[10] = {'.', '.', '.', '.', '.', '.', '.', '.', '.', '\0'};
     memcpy(game_state->board, initial_board, sizeof(initial_board));
+    printf("Board: %s", game_state->board);
+
+    // Receive and store player 1's name
+    char player_name[50];
+    char player_input[50];
+    int recv_size = recv(game_state->player1_socket, player_input, sizeof(player_input), 0);
+    int player_added;
+    do {
+        recv_size = recv(game_state->player1_socket, player_input, sizeof(player_input), 0);
+        if (recv_size > 0) {
+            player_input[recv_size] = '\0';
+            sscanf(player_input, "PLAY %49s", player_name);
+            player_added = add_player(game_state->player1_socket, player_name);
+            if (!player_added) {
+                send(game_state->player1_socket, "Name already exists, please choose another name.\n", 51, 0);
+            }
+        } else {
+            perror("Error receiving player 1 name from client");
+        }
+    } while (!player_added);
+
+    printf("Received player 1 name: %s\n", player_name);
+
+    // Receive and store player 2's name
+    do {
+        recv_size = recv(game_state->player2_socket, player_input, sizeof(player_input), 0);
+        if (recv_size > 0) {
+            player_input[recv_size] = '\0';
+            sscanf(player_input, "PLAY %49s", player_name);
+            player_added = add_player(game_state->player2_socket, player_name);
+            if (!player_added) {
+                send(game_state->player2_socket, "Name already exists, please choose another name.\n", 51, 0);
+            }
+        } else {
+            perror("Error receiving player 2 name from client");
+        }
+    } while (!player_added);
+
+    printf("Received player 2 name: %s\n", player_name);
 
     // Send initial game state to players
     pthread_mutex_lock(&game_state->mutex);
@@ -109,6 +167,7 @@ void* game_thread(void* arg) {
 
     // Game loop
     while (1) {
+
         // Receive move from player 1
         char move[10];
         
@@ -118,6 +177,7 @@ void* game_thread(void* arg) {
         }
 
         // Update game state based on player 1's move
+        update_game_state(game_state, 1, move);
 
         // Send updated game state to player 2
         if (send(game_state->player2_socket, game_state, sizeof(GameState), 0) == -1) {
@@ -149,31 +209,56 @@ void* game_thread(void* arg) {
     return NULL;
 }
 
-void player_thread(void *arg) {
-    int sockfd = *((int *) arg);
-    GameState game_state_copy;
-    char move[10];
-    while (1) {
-    // Receive move from player
-    if (recv(sockfd, move, 10, 0) == -1) {
-        perror("Error receiving move from player");
-        break;
+void update_game_state(GameState* game_state, int player, const char* move) {
+    // Parse the move and update the game state's board
+    int position = atoi(move) - 1;
+    char mark = (player == 1) ? 'X' : 'O';
+
+    if (position >= 0 && position < 9 && game_state->board[position] == '.') {
+        game_state->board[position] = mark;
+    } else {
+        // Handle invalid move
+        printf("Invalid move from player %d\n", player);
     }
+}
 
-    // Lock game state mutex and update game state
-    pthread_mutex_lock(&game_state_copy.mutex);
-    //memcpy(&game_state_copy, (GameState*) &move, sizeof(GameState));
-    memcpy(game_state_copy.board, move, sizeof(game_state_copy.board));
-    pthread_mutex_unlock(&game_state_copy.mutex);
+// Add a player to the hashmap, returns 1 if added successfully, 0 if name already exists
+int add_player(int socket, const char* name) {
+    Player* p;
 
-    // Send updated game state to other player
-    int other_sockfd = (sockfd == game_state_copy.player1_socket) ? game_state_copy.player2_socket : game_state_copy.player1_socket;
-        if (send(other_sockfd, move, 10, 0) == -1) {
-            perror("Error sending game state to other player");
-            break;
+    // Check if name already exists
+    for (p = players; p != NULL; p = p->hh.next) {
+        if (strcmp(p->name, name) == 0) {
+            return 0;  // Name already exists
         }
     }
 
-    close(sockfd);
+    // Add the new player
+    p = malloc(sizeof(Player));
+    p->socket = socket;
+    snprintf(p->name, sizeof(p->name), "%s", name);
+    HASH_ADD_INT(players, socket, p);
+
+    return 1;  // Player added successfully
+}
+// Find a player in the hashmap by socket
+Player* find_player(int socket) {
+    Player* p;
+    HASH_FIND_INT(players, &socket, p);
+    return p;
 }
 
+// Remove a player from the hashmap
+void remove_player(Player* p) {
+    HASH_DEL(players, p);
+    free(p);
+}
+
+// Free the hashmap
+void free_players() {
+    Player* current_player, *tmp;
+    HASH_ITER(hh, players, current_player, tmp) {
+        HASH_DEL(players, current_player);
+        free(current_player);
+    }
+}
