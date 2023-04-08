@@ -3,10 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <pthread.h>
 
 /*
 3 Protocol
@@ -20,9 +16,6 @@ The game protocol involves nine message types:
 • RSGN
 • DRAW message
 • OVER outcome reason
-Figure 1 shows an example of communication between the server and two clients during the
-set-up and first two moves of a game. Figure 2 shows two proposed draws, the first rejected and the
-second accepted.
 3.1 Message format
 Messages are broken into fields. A field consists of one or more characters, followed by a vertical bar.
 The first field is always a four-character code. The second field gives the length of the remaining
@@ -51,24 +44,6 @@ OVER|26|W|Joe Smith has resigned.|
 */
 
 #define BUFFER_SIZE 512
-
-typedef struct {
-    char board[10];
-    char current_player;
-    int player1_socket;
-    int player2_socket;
-} GameState;
-
-static GameState game_state;
-pthread_mutex_t game_state_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-const char *get_board() {
-    return game_state.board;
-}
-
-char get_current_player() {
-    return game_state.current_player;
-}
 
 void send_message(int sockfd, const char *msg) {
     if (send(sockfd, msg, strlen(msg), 0) == -1) {
@@ -138,119 +113,15 @@ int validate_move(const char *move) {
     return 1;
 }
 
-char game_over(const char *board) {
-    // Check rows, columns, and diagonals for a winner
-    const int winning_patterns[8][3] = {
-        {0, 1, 2}, {3, 4, 5}, {6, 7, 8}, // Rows
-        {0, 3, 6}, {1, 4, 7}, {2, 5, 8}, // Columns
-        {0, 4, 8}, {2, 4, 6}            // Diagonals
-    };
-
-    for (int i = 0; i < 8; ++i) {
-        if (board[winning_patterns[i][0]] == board[winning_patterns[i][1]] &&
-            board[winning_patterns[i][1]] == board[winning_patterns[i][2]] &&
-            (board[winning_patterns[i][0]] == 'X' || board[winning_patterns[i][0]] == 'O')) {
-            return board[winning_patterns[i][0]];
-        }
-    }
-
-    // Check for a draw (no empty spaces on the board)
-    int is_draw = 1;
-    for (int i = 0; i < 9; ++i) {
-        if (board[i] == '.') {
-            is_draw = 0;
-            break;
-        }
-    }
-
-    if (is_draw) {
-        return 'D';
-    }
-
-    // The game is not over yet
-    return '\0';
+int game_over(const char *board) {
+    // Check if the game is over and return the outcome
+    // ...
 }
 
-void update_board(char *board, const char *move, char *role) {
+void update_board(char *board, const char *move, const char *role) {
     // Update the board based on the given move and role
     int row, col;
     sscanf(move, "%d,%d", &row, &col);
     int index = (row - 1) * 3 + (col - 1);
     board[index] = role[0];
-}
-
-
-void print_game_state() {
-    printf("Current game state:\n");
-    printf("Board: %s\n", game_state.board);
-    printf("Current player: %c\n", game_state.current_player);
-}
-
-void reset_game_state() {
-    strcpy(game_state.board, ".........");
-    game_state.current_player = 'X';
-}
-
-void lock_game_state() {
-    pthread_mutex_lock(&game_state_mutex);
-}
-
-void unlock_game_state() {
-    pthread_mutex_unlock(&game_state_mutex);
-}
-
-
-char *game_state_string() {
-    char *game_state_str = (char *)malloc(10 * sizeof(char));
-    strncpy(game_state_str, game_state.board, 9);
-    game_state_str[9] = '\0';
-    return game_state_str;
-}
-
-int process_move(char player_role, int row, int col) {
-    int index = (row - 1) * 3 + (col - 1);
-
-    lock_game_state(); // Lock the game state before making changes
-
-    // Check if the cell is empty and the player role matches the current player
-    if (game_state.board[index] == '.' && game_state.current_player == player_role) {
-        game_state.board[index] = player_role;
-        game_state.current_player = (player_role == 'X') ? 'O' : 'X'; // Toggle the current player
-
-        unlock_game_state(); // Unlock the game state after making changes
-        return 1; // Move was successful
-    }
-
-    unlock_game_state(); // Unlock the game state if the move was unsuccessful
-    return 0; // Move was unsuccessful
-}
-
-void set_player_socket(char role, int socket) {
-    lock_game_state();
-    if (role == 'X') {
-        game_state.player1_socket = socket;
-    } else if (role == 'O') {
-        game_state.player2_socket = socket;
-    }
-    unlock_game_state();
-}
-
-void set_current_player(char role) {
-    lock_game_state();
-    game_state.current_player = role;
-    unlock_game_state();
-}
-
-int get_player_socket(char role) {
-    int socket;
-    lock_game_state();
-    if (role == 'X') {
-        socket = game_state.player1_socket;
-    } else if (role == 'O') {
-        socket = game_state.player2_socket;
-    } else {
-        socket = -1;
-    }
-    unlock_game_state();
-    return socket;
 }
