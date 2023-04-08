@@ -103,7 +103,7 @@ char *format_message(const char *msg_type, ...) {
 
     int size = strlen(content);
     formatted_msg = (char *)malloc(strlen(msg_type) + 1 + 3 + 1 + size + 1);
-    snprintf(formatted_msg, strlen(msg_type) + 1 + 3 + 1 + size + 1, "%s|%03d|%s", msg_type, size, content);
+    snprintf(formatted_msg, strlen(msg_type) + 1 + 1 + 1 + size + 1, "%s|%d|%s", msg_type, size, content);
 
     return formatted_msg;
 }
