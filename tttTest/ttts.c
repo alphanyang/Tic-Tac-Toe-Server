@@ -49,6 +49,11 @@ int main() {
     printf("Test: %s\n", format_message(MSG_NAME, "Joe Smith"));
     printf("Test: %s\n", format_message(MSG_WAIT));
     printf("Test: %s\n", format_message(MSG_MOVE, "2,2", "X"));
+
+    Message *testMsg = parse_message(format_message(MSG_MOVE, "2,2", "X"));
+    printf("Test: %s\n", testMsg->msg_type);
+    printf("Test: %s\n", testMsg->content);
+
     // Create server socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
