@@ -8,6 +8,7 @@ typedef struct {
 } Message;
 
 #define MSG_PLAY "PLAY"
+#define MSG_NAME "NAME"
 #define MSG_WAIT "WAIT"
 #define MSG_BEGN "BEGN"
 #define MSG_MOVE "MOVE"

@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
     // Main game loop
     while (1) {
         // Get player name from command-line argument
-        char move[10];
+        char input[250];
         char command[10];
-        char player_name[50];
+        char msg[50];
 
         // Send player name to server
         
@@ -57,9 +57,11 @@ int main(int argc, char *argv[]) {
 
         // Get player's move
         
-        if (sscanf(move, "%9s %49s", command, player_name) == 2) {
+        if (sscanf(input, "%s %s", command, msg) == 2) {
+
             if (strcasecmp(command, "PLAY") == 0) {
-                if (send(client_socket, player_name, strlen(player_name) + 1, 0) == -1) {
+                
+                if (send(client_socket, msg, strlen(msg) + 1, 0) == -1) {
                     perror("Error sending player name to server");
                     break;
                 }
@@ -74,13 +76,13 @@ int main(int argc, char *argv[]) {
         }
 
         
-        if(fgets(move, 10, stdin) == NULL) {
+        if(fgets(input, 10, stdin) == NULL) {
             perror("Error reading player move");
             break;
         }
 
         // Send player's move to server
-        if (send(client_socket, move, strlen(move) + 1, 0) == -1) {
+        if (send(client_socket, input, strlen(input) + 1, 0) == -1) {
             perror("Error sending move to server");
             break;
         }

@@ -89,24 +89,51 @@ Message *parse_message(const char *msg) {
 
 char *format_message(const char *msg_type, ...) {
     char *formatted_msg;
-    char content[BUFFER_SIZE];
+    char content[BUFFER_SIZE] = {0};
     va_list args;
     va_start(args, msg_type);
 
-    if (strcmp(msg_type, MSG_PLAY) == 0) {
+    if (strcmp(msg_type, "NAME") == 0) {
         snprintf(content, BUFFER_SIZE, "%s|", va_arg(args, char *));
-    } else if (strcmp(msg_type, MSG_MOVE) == 0) {
+    } else if (strcmp(msg_type, "MOVE") == 0) {
         snprintf(content, BUFFER_SIZE, "%s|%s|", va_arg(args, char *), va_arg(args, char *));
-    } // Add more cases for different message types as needed.
+    } else if (strcmp(msg_type, "BEGN") == 0) {
+        snprintf(content, BUFFER_SIZE, "%s|%s|", va_arg(args, char *), va_arg(args, char *));
+    } else if (strcmp(msg_type, "MOVD") == 0) {
+        snprintf(content, BUFFER_SIZE, "%s|%s|%s|", va_arg(args, char *), va_arg(args, char *), va_arg(args, char *));
+    } else if (strcmp(msg_type, "INVL") == 0) {
+        snprintf(content, BUFFER_SIZE, "%s|", va_arg(args, char *));
+    } else if (strcmp(msg_type, "RSGN") == 0 || strcmp(msg_type, "WAIT") == 0) {
+        // Do nothing since these messages don't have any content.
+    } else if (strcmp(msg_type, "DRAW") == 0) {
+        snprintf(content, BUFFER_SIZE, "%s|", va_arg(args, char *));
+    } else if (strcmp(msg_type, "OVER") == 0) {
+        snprintf(content, BUFFER_SIZE, "%s|%s|", va_arg(args, char *), va_arg(args, char *));
+    }
 
     va_end(args);
 
-    int size = strlen(content);
-    formatted_msg = (char *)malloc(strlen(msg_type) + 1 + 3 + 1 + size + 1);
-    snprintf(formatted_msg, strlen(msg_type) + 1 + 1 + 1 + size + 1, "%s|%d|%s", msg_type, size, content);
+    if (strcmp(msg_type, "WAIT") == 0) {
+        formatted_msg = (char *)malloc(strlen("WAIT|0|") + 1);
+        snprintf(formatted_msg, strlen("WAIT|0|") + 1, "WAIT|0|");
+    } else {
+        int size = strlen(content);
+        if (strcmp(msg_type, "NAME") == 0) {
+            size++;  // Add one to the size for the vertical bar in the "NAME" case.
+            formatted_msg = (char *)malloc(strlen(msg_type) + 1 + 3 + 1 + size + 1);
+            snprintf(formatted_msg, strlen(msg_type) + 1 + 1 + 1 + size +1, "%s|%d|%s", msg_type, size-1, content);
+            
+        } else{
+            formatted_msg = (char *)malloc(strlen(msg_type) + 1 + 3 + 1 + size + 1);
+            snprintf(formatted_msg, strlen(msg_type) + 1 + 1 + 1 + size + 1, "%s|%d|%s", msg_type, size, content);
+        }
+        
+    }
 
     return formatted_msg;
 }
+
+
 
 int validate_move(const char *move) {
     // Check if the move has the correct format and is within the valid range

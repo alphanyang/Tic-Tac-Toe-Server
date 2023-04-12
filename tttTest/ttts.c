@@ -46,7 +46,9 @@ int main() {
     socklen_t client_address_len = sizeof(client_address);
     pthread_t thread;
     printf("Server address: %s\n", inet_ntoa(server_address.sin_addr));
-
+    printf("Test: %s\n", format_message(MSG_NAME, "Joe Smith"));
+    printf("Test: %s\n", format_message(MSG_WAIT));
+    printf("Test: %s\n", format_message(MSG_MOVE, "2,2", "X"));
     // Create server socket
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
     if (server_socket == -1) {
@@ -175,6 +177,8 @@ void* game_thread(void* arg) {
             perror("Error receiving move from player 1");
             break;
         }
+
+        
 
         // Update game state based on player 1's move
         update_game_state(game_state, 1, move);
