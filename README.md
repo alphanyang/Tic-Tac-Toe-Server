@@ -6,15 +6,19 @@
 
 This is a simple Tic-Tac-Toe server application that allows clients to connect and play the game with each other.
 
+## Usage
+
+The program can be run with the following command:
+
+```bash
+./server
+```
+
 ## Features
 
 - Supports multiple concurrent games
 - Thread-safe handling of games and player names
 - Text-based protocol for communication between server and clients
-
-## Usage
-
-Compile the server code and run the executable. The server listens on port 5000 by default.
 
 ## Protocol
 
@@ -52,7 +56,7 @@ This program implements a client for the TIC-TAC-TOE game protocol. It connects 
 The program can be run with the following command:
 
 ```bash
-./server <server_ip_address>
+./client <server_ip_address>
 ```
 If server_ip_address is not provided, it will default to 127.0.0.1.
 
