@@ -30,6 +30,9 @@ typedef struct {
 game_t games[MAX_CLIENTS];
 int num_games = 0;
 pthread_mutex_t game_lock;
+char player_names[MAX_CLIENTS * 2][MAX_NAME_LEN];
+int num_player_names = 0;
+pthread_mutex_t player_name_lock;
 
 void init_board(char board[BOARD_SIZE]) {
     for (int i = 0; i < BOARD_SIZE; i++) {
@@ -40,15 +43,28 @@ void init_board(char board[BOARD_SIZE]) {
 }
 
 int check_name(char *name) {
-    for (int i = 0; i < num_games; i++) {
-        if (games[i].status != 0) {
-            if (strcmp(name, games[i].players[0].name) == 0 || strcmp(name, games[i].players[1].name) == 0) {
-                return 0;
-            }
+    pthread_mutex_lock(&player_name_lock);
+    for (int i = 0; i < num_player_names; i++) {
+        if (strcmp(name, player_names[i]) == 0) {
+            pthread_mutex_unlock(&player_name_lock);
+            return 0;
         }
     }
+    pthread_mutex_unlock(&player_name_lock);
     return 1;
 }
+
+int validaate_move(char *move) {
+    if (strlen(move) == 2) {
+        int row = move[0] - '1';
+        int col = move[1] - '1';
+        if (row >= 0 && row < 3 && col >= 0 && col < 3) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 
 void *handle_client(void *arg) {
     int client_fd = *((int*)arg);
@@ -64,6 +80,17 @@ void *handle_client(void *arg) {
     if (buf == NULL) {
         close(client_fd);
         return NULL;
+    }
+
+    if (check_name(buf) == 0) {
+        write_msg(client_fd, "INVL name already in use\n");
+        close(client_fd);
+        free(buf);
+        return NULL;
+    } else {
+        pthread_mutex_lock(&player_name_lock);
+        strcpy(player_names[num_player_names++], buf);
+        pthread_mutex_unlock(&player_name_lock);
     }
 
     pthread_mutex_lock(&game_lock);
@@ -84,6 +111,7 @@ void *handle_client(void *arg) {
             break;
         }
     }
+
     if (game_id == -1) {
         // create new game
         game_id = num_games++;
@@ -95,14 +123,9 @@ void *handle_client(void *arg) {
         pthread_mutex_init(&games[game_id].lock, NULL);
         init_board(games[game_id].board);
         pthread_mutex_unlock(&game_lock);
+        write_msg(client_fd, "WAIT\n");
     }
 
-    if (check_name(buf) == 0) {
-        write_msg(client_fd, "INVL name already in use\n");
-        free(buf);
-        close(client_fd);
-        return NULL;
-    }
 
     // read player moves
     while (1) {
@@ -291,6 +314,12 @@ int main() {
             perror("pthread_create");
             exit(1);
         }
+
+        if (pthread_mutex_init(&player_name_lock, NULL) != 0) {
+            perror("pthread_mutex_init");
+            exit(1);
+        }
+
         pthread_detach(client_thread);
     }
 

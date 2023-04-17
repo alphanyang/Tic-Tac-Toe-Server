@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sys/select.h>
 
 
 #define SERVER_IP "127.0.0.1"
@@ -35,26 +36,70 @@ int main(int argc, char *argv[]) {
     char command[10];
     char msg[50];
 
-    // Main game loop
-    while (1) {
-        // Get player name from command-line argument
-        if ((fgets(input, sizeof(input), stdin) == NULL)) {
-            perror("Error reading player move");
+   while (1) {
+        // Initialize file descriptor set
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(client_socket, &read_fds);
+        FD_SET(STDIN_FILENO, &read_fds);
+
+        int max_fd = (client_socket > STDIN_FILENO) ? client_socket : STDIN_FILENO;
+
+        // Wait for data to be available on either the server or stdin
+        int activity = select(max_fd + 1, &read_fds, NULL, NULL, NULL);
+        if (activity == -1) {
+            perror("Error with select");
             break;
         }
 
-        // Send player name to server
+        // If data is available on the server
+        if (FD_ISSET(client_socket, &read_fds)) {
+            char* response = receive_msg(client_socket);
+            if(response == NULL){
+                perror("Error receiving message from server");
+                exit(EXIT_FAILURE);
+            }
+            printf("%s\n", response);
+        }
+
+        // If data is available on the server
+        if (FD_ISSET(client_socket, &read_fds)) {
+            char* response = receive_msg(client_socket);
+            if(response == NULL){
+                perror("Error receiving message from server");
+                exit(EXIT_FAILURE);
+            }
+            printf("%s\n", response);
+        }
+
+        // If data is available on stdin
+        if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+            // Get player name from command-line argument
+            if ((fgets(input, sizeof(input), stdin) == NULL)) {
+                perror("Error reading player move");
+                break;
+            }
+
+
+            // sending input
         if (sscanf(input, "%s %s", command, msg) == 2) {
             if(strcmp(command, "PLAY") == 0){
                 write_msg(client_socket, msg);
-                printf("%s", receive_msg(client_socket)); // Add this line to read the server's response
-                printf("%s\n", format_message(MSG_WAIT));
-                printf("%s", receive_msg(client_socket));
+                char* response = receive_msg(client_socket);
+                if(response == NULL){
+                    perror("Error receiving message from server");
+                    exit(EXIT_FAILURE);
+                }
+                if(strcmp(response, "INVL name already in use\n") == 0) {
+                    printf("%s", response);
+                    continue;
+                } else {
+                    printf("%s", response);
+                }
             } else{
                 printf("Enter PLAY <player_name> to start a match.\n");
             }
             
-            //send_message(client_socket, "C");
             if(strcmp(command, "MOVE") == 0){
                 if (sscanf(msg, "%s %s", command, msg) == 2){
                     if(validate_move(msg) == 0){
@@ -64,14 +109,21 @@ int main(int argc, char *argv[]) {
                         write_msg(client_socket, input);
                     }
                 }
-                printf("%s\n", receive_msg(client_socket));
+                char* response = receive_msg(client_socket);
+                if(response == NULL){
+                    perror("Error receiving message from server");
+                    exit(EXIT_FAILURE);
+                }
+                printf("%s\n", response);
             }
-            //send_message(client_socket, "C");
         } else {
             printf("Invalid command.\n");
         }
+
+        }
         
     }
+
 
     // Close connection to server
     close(client_socket);
