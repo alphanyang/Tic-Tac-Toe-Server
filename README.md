@@ -1,6 +1,6 @@
 # Contributors
-Alphan Yang ay329
-Lily Xing
+-Alphan Yang ay329
+-Lily Xing
 
 # Tic-Tac-Toe Server
 
