@@ -9,8 +9,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <signal.h>
-
 
 #define SERVER_PORT 5037
 #define MAX_CLIENTS 64
@@ -23,6 +23,11 @@ typedef struct {
     //struct Player *players;
     pthread_mutex_t mutex;
 } GameState;
+
+typedef struct Client {
+    int socket;
+    struct Client *next;
+} Client;
 
 
 typedef struct {
@@ -37,8 +42,13 @@ int add_player(int socket, const char* name);
 Player* find_player(int socket);
 void remove_player(Player* p);
 void free_players();
+void *client_thread(void *arg);
+void add_client(Client *new_client);
+void remove_client(Client *client);
 
 Player* players = NULL;
+Client *clients_head = NULL;
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main() {
     int server_socket, opt = 1;
@@ -82,31 +92,32 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
+    signal(SIGPIPE, SIG_IGN);
+
     while (1) {
-        // Accept two incoming connections and create game thread
-        GameState* game_state = malloc(sizeof(GameState));
-        game_state->player1_socket = accept(server_socket, (struct sockaddr*) &client_address, &client_address_len);
-        if (game_state->player1_socket == -1) {
-            perror("Error accepting connection from player 1");
+        // Accept incoming connections
+        int client_socket = accept(server_socket, (struct sockaddr*) &client_address, &client_address_len);
+        if (client_socket == -1) {
+            perror("Error accepting connection from client");
+            continue;
+        }
+
+        // Create new client struct and add to clients list
+        Client *new_client = (Client*) malloc(sizeof(Client));
+        new_client->socket = client_socket;
+        new_client->next = NULL;
+        add_client(new_client);
+
+        // Create a separate thread to handle the client
+        pthread_t client_thread_id;
+        if (pthread_create(&client_thread_id, NULL, client_thread, new_client) != 0) {
+            perror("Error creating client thread");
             exit(EXIT_FAILURE);
         }
 
-        game_state->player2_socket = accept(server_socket, (struct sockaddr*) &client_address, &client_address_len);
-        if (game_state->player2_socket == -1) {
-            perror("Error accepting connection from player 2");
-            exit(EXIT_FAILURE);
-        }
-
-        pthread_mutex_init(&game_state->mutex, NULL);
-
-        if (pthread_create(&thread, NULL, game_thread, game_state) != 0) {
-            perror("Error creating game thread");
-            exit(EXIT_FAILURE);
-        }
-
-        // Detach game thread
-        if (pthread_detach(thread) != 0) {
-            perror("Error detaching game thread");
+        // Detach client thread
+        if (pthread_detach(client_thread_id) != 0) {
+            perror("Error detaching client thread");
             exit(EXIT_FAILURE);
         }
     }
@@ -270,4 +281,41 @@ void free_players() {
         HASH_DEL(players, current_player);
         free(current_player);
     }
+}
+
+void *client_thread(void *arg) {
+    Client *client = (Client*) arg;
+
+    // Handle the client connection
+    // ... (This is where you would process the client's messages)
+
+    // Clean up and close the client socket
+    close(client->socket);
+    remove_client(client);
+    free(client);
+    return NULL;
+}
+
+void add_client(Client *new_client) {
+    pthread_mutex_lock(&clients_mutex);
+    new_client->next = clients_head;
+    clients_head = new_client;
+    pthread_mutex_unlock(&clients_mutex);
+}
+
+void remove_client(Client *client) {
+    pthread_mutex_lock(&clients_mutex);
+    if (clients_head == client) {
+        clients_head = client->next;
+    } else {
+        Client *current = clients_head;
+        while (current->next != NULL) {
+            if (current->next == client) {
+                current->next = client->next;
+                break;
+            }
+            current = current->next;
+        }
+    }
+    pthread_mutex_unlock(&clients_mutex);
 }
