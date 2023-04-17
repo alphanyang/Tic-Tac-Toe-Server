@@ -130,6 +130,12 @@ void handle_server_messages(int server_fd)
 					if (sscanf(response, "MOVD %c %s %[^\n]", &moved_role, cmd, grid) == 3)
 					{
                         printf("%s", response);
+						for(int r = 0; r < 3; r++){
+							for(int c = 0; c < 3; c++){
+								printf("%c ", grid[r*3 + c]);
+							}
+							printf("\n");
+						}
 						//printf("%c made a move: %s\n", moved_role, grid);
                         if (role == moved_role) // Compare characters directly, without using '&'
                         {
@@ -168,7 +174,16 @@ void handle_server_messages(int server_fd)
 				}
 				else if (strcmp(cmd, "OVER") == 0)
 				{
-                    printf("%s", response);
+                    //printf("%s", response);
+					printf("OVER %s\n", server_response);
+					if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
+						for(int r = 0; r < 3; r++){
+							for(int c = 0; c < 3; c++){
+								printf("%c ", grid[r*3 + c]);
+							}
+							printf("\n");
+						}
+					}
                     break;
 				}
 				else

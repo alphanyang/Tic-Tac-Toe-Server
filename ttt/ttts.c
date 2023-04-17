@@ -190,17 +190,21 @@ void *handle_client(void *arg)
 								 	// Announce winner
                                     if(strcmp(player.name, games[game_id].players[0].name) == 0)
                                     {
-                                        sprintf(buf, "OVER L %s won\n", games[game_id].players[0].name);
+                                        sprintf(buf, "OVER L %s won\n%s\n", games[game_id].players[0].name, games[game_id].board);
                                         write_msg(games[game_id].players[1].sock_fd, buf);
-                                        sprintf(buf, "OVER W %s won\n", games[game_id].players[0].name);
+                                        sprintf(buf, "OVER W %s won\n%s\n", games[game_id].players[0].name,  games[game_id].board);
                                         write_msg(games[game_id].players[0].sock_fd, buf);
                                         break;
                                     }
                                     else if(strcmp(player.name, games[game_id].players[1].name) == 0)
                                     {
-                                        sprintf(buf, "OVER L %s won\n", games[game_id].players[1].name);
+										//send final board
+										// sprintf(buf, "MOVD %s %s %s\n", role, pos, games[game_id].board);
+										// write_msg(games[game_id].players[0].sock_fd, buf);
+										// write_msg(games[game_id].players[1].sock_fd, buf);
+                                        sprintf(buf, "OVER W %s won\n%s\n", games[game_id].players[1].name,  games[game_id].board);
                                         write_msg(games[game_id].players[1].sock_fd, buf);
-                                        sprintf(buf, "OVER W %s won\n", games[game_id].players[1].name);
+                                        sprintf(buf, "OVER W %s won\n%s\n", games[game_id].players[1].name,  games[game_id].board);
                                         write_msg(games[game_id].players[0].sock_fd, buf);
                                         break;
                                     }
