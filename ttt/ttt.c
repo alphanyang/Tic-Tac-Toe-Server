@@ -14,12 +14,56 @@
 
 int connect_to_server(const char *ip, int port);
 
-// Update the handle_server_messages function
+void handle_user_input(int server_fd)
+{
+    char input[250];
+    char command[10];
+    char msg[50];
+
+    if ((fgets(input, sizeof(input), stdin) == NULL))
+    {
+        perror("Error reading player move");
+        return;
+    }
+
+    // Sending input
+    if (sscanf(input, "%s %[^\n]", command, msg) == 2)
+    {
+        if (strcmp(command, "PLAY") == 0)
+        {
+            write_msg(server_fd, msg);
+        }
+        else if (strcmp(command, "MOVE") == 0)
+        {
+            write_msg(server_fd, input);
+        }
+        else if (strcmp(command, "DRAW") == 0)
+        {
+            write_msg(server_fd, input);
+            //wait for response;
+        }
+        else
+        {
+            printf("Invalid command.\n");
+        }
+    }
+    else if (sscanf(input, "%s %[^\n]", command, msg) == 1)
+    {
+        if (strcmp(command, "RSGN") == 0)
+        {
+            write_msg(server_fd, input);
+        }
+    }
+    else{
+        printf("Invalid command.\n");
+    }
+}
+
 void handle_server_messages(int server_fd)
 {
-	char input[250];
-	char command[10];
-	char msg[50];
+	// char input[250];
+	// char command[10];
+	// char msg[50];
 
 	while (1)
 	{
@@ -49,128 +93,122 @@ void handle_server_messages(int server_fd)
 				exit(EXIT_FAILURE);
 			}
 
-			printf("%s\n", response);
-		}
-
-		// If data is available on stdin
-		if (FD_ISSET(STDIN_FILENO, &read_fds))
-		{
-			printf("Enter command: ");
-			if ((fgets(input, sizeof(input), stdin) == NULL))
+			// Process the received message
+			char cmd[50];
+            char role;
+            char grid[50];
+            char opponent_name[MAX_MESSAGE_LENGTH];
+            char server_response[50];
+			if (sscanf(response, "%s %[^\n]", cmd, server_response) == 2)
 			{
-				perror("Error reading player move");
-				break;
-			}
-
-			// Sending input
-			if (sscanf(input, "%s %s", command, msg) == 2)
-			{
-				write_msg(server_fd, input);
-				char *message = receive_msg(server_fd);
-				if (message == NULL)
+				if (strcmp(cmd, "WAIT") == 0)
 				{
-					perror("Error receiving message from server");
-					exit(EXIT_FAILURE);
+					printf("WAIT\n");
 				}
+				else if (strcmp(cmd, "BEGN") == 0)
+                {
+                    printf("%s\n", response);
+                    
+                    
+                    if (sscanf(response, "BEGN %c %[^\n]", &role, opponent_name) == 2)
+                    {
+                        printf("Game started. You are %c. Playing against %s.\n", role, opponent_name);
+                        if (role == 'X')
+                        {
+                            printf("Your turn. Enter MOVE <role> <pos> to make a move.\n");
+                        }
+                        else
+                        {
+                            printf("Waiting for %s to make a move.\n", opponent_name);
+                        }
+                    }
+                }
 
-				// Process the received message
-				char cmd[5];
-				if (sscanf(message, "%4s", cmd) == 1)
+				else if (strcmp(cmd, "MOVD") == 0)
 				{
-					if (strcmp(cmd, "WAIT") == 0)
+					char moved_role;
+					if (sscanf(response, "MOVD %c %s %[^\n]", &moved_role, cmd, grid) == 3)
 					{
-						printf("Waiting for another player...\n");
+                        printf("%s", response);
+						//printf("%c made a move: %s\n", moved_role, grid);
+                        if (role == moved_role) // Compare characters directly, without using '&'
+                        {
+                            printf("Waiting for %s to make a move.\n", opponent_name);
+                        }
+                        else
+                        {
+                            printf("Your turn. Enter MOVE <role> <pos> to make a move.\n");
+                        }
 					}
-					else if (strcmp(cmd, "BEGN") == 0)
+				}
+				else if (strcmp(cmd, "INVL") == 0)
+				{
+					char reason[MAX_MESSAGE_LENGTH];
+					if (sscanf(response, "INVL %[^\n]", reason) == 1)
 					{
-						printf("%s\n", message);
-						char role, opponent_name[11];
-						if (sscanf(message, "BEGN %c %s", &role, opponent_name) == 2)
+						printf("Invalid move or message: %s\n", reason);
+                        // Call the function to get another input from the user
+                        //handle_user_input(server_fd);
+					}
+				}
+				else if (strcmp(cmd, "DRAW") == 0)
+				{
+					char subcmd;
+					if (sscanf(response, "DRAW %c", &subcmd) == 1)
+					{
+						if (subcmd == 'S')
 						{
-							printf("Game started. You are %c. Playing against %s.\n", role, opponent_name);
-							if (role == 'X')
-							{
-								printf("Your turn. Enter MOVE<pos> to make a move.\n");
-							}
-							else
-							{
-								printf("Waiting for %s to make a move.\n", opponent_name);
-							}
+							printf("Opponent suggests a draw. Enter DRAW A to accept or DRAW R to reject.\n");
+						}
+						else if (subcmd == 'R')
+						{
+							printf("Opponent rejected the draw.\n");
 						}
 					}
-					else if (strcmp(cmd, "MOVD") == 0)
-					{
-						char role, grid[MAX_MESSAGE_LENGTH];
-						if (sscanf(message, "MOVD %c %[^\n]", &role, grid) == 2)
-						{
-							printf("%c made a move: %s\n", role, grid);
-							printf("Your turn. Enter MOVE<cell> to make a move.\n");
-						}
-					}
-					else if (strcmp(cmd, "INVL") == 0)
-					{
-						char reason[MAX_MESSAGE_LENGTH];
-						if (sscanf(message, "INVL %[^\n]", reason) == 1)
-						{
-							printf("Invalid move or message: %s\n", reason);
-						}
-					}
-					else if (strcmp(cmd, "DRAW") == 0)
-					{
-						char subcmd;
-						if (sscanf(message, "DRAW %c", &subcmd) == 1)
-						{
-							if (subcmd == 'S')
-							{
-								printf("Opponent suggests a draw. Enter DRAW A to accept or DRAW R to reject.\n");
-							}
-							else if (subcmd == 'R')
-							{
-								printf("Opponent rejected the draw.\n");
-							}
-						}
-					}
-					else if (strcmp(cmd, "OVER") == 0)
-					{
-						char outcome;
-						char reason[MAX_MESSAGE_LENGTH];
-						if (sscanf(message, "OVER %c %[^\n]", &outcome, reason) == 2)
-						{
-							printf("Game over. %s\n", reason);
-							exit(EXIT_SUCCESS);
-						}
-					}
-					else
-					{
-						printf("Error parsing command: %s\n", message);
-					}
+				}
+				else if (strcmp(cmd, "OVER") == 0)
+				{
+                    printf("%s", response);
+                    break;
+				}
+				else
+				{
+					printf("%s\n", response);
 				}
 			}
 			else
 			{
-				printf("Invalid command.\n");
+				printf("%s\n", response);
 			}
+
+			free(response);
 		}
+
+		// If data is available on stdin
+		if (FD_ISSET(STDIN_FILENO, &read_fds))
+        {
+            handle_user_input(server_fd);
+        }
 	}
 }
 
 int main(int argc, char *argv[])
 {
-    // Check command-line arguments
-    if (argc != 2 && argc != 1)
-    {
-        printf("Usage: %s[server_ip_address]\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
+	// Check command-line arguments
+	if (argc != 2 && argc != 1)
+	{
+		printf("Usage: %s[server_ip_address]\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
 
-    char *ip = (argc == 2) ? argv[1] : SERVER_IP;
-    int client_socket = connect_to_server(ip, SERVER_PORT);
+	char *ip = (argc == 2) ? argv[1] : SERVER_IP;
+	int client_socket = connect_to_server(ip, SERVER_PORT);
 
-    handle_server_messages(client_socket);
+	handle_server_messages(client_socket);
 
-    // Close connection to server
-    close(client_socket);
-    return 0;
+	// Close connection to server
+	close(client_socket);
+	return 0;
 }
 
 int connect_to_server(const char *ip, int port)

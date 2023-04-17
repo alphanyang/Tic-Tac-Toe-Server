@@ -28,6 +28,7 @@ typedef struct
 	int status;
 	pthread_mutex_t lock;
 	char board[BOARD_SIZE];
+	int current_turn;
 }
 
 game_t;
@@ -196,6 +197,7 @@ void *handle_client(void *arg)
 		init_board(games[game_id].board);
 		pthread_mutex_unlock(&game_lock);
 		write_msg(client_fd, "WAIT");
+		games[game_id].current_turn = 0;
 	}
 
 	// read player moves
@@ -224,52 +226,132 @@ void *handle_client(void *arg)
 					printf("Received move: %s %s\n", role, pos);
 					if (validate_move(pos) == 0)
 					{
-						perror("Error reading player move");
-						write_msg(client_fd, format_message(MSG_INVL, "!INVALID MOVE"));
-						break;
+						write_msg(client_fd, "!INVALID MOVE: Cell out of bounds");
 					}
 					else
 					{
-					 	// TODO: process and update the game state based on the move
-						// send updated game state back to both clients
-						int row = pos[0] - '1';
-						int col = pos[2] - '1';
-						int index = row *3 + col;
-						if (games[game_id].board[index] == '.')
+					 	// Check if it's the current player's turn
+						int player_index = (player.role == games[game_id].players[0].role) ? 0 : 1;
+						if (games[game_id].current_turn != player_index)
 						{
-							games[game_id].board[index] = player.role;
-
-							// Check for win condition
-							if (check_win(games[game_id].board))
-							{
-							 					// Announce winner
-								sprintf(buf, "WINNER %s\n", player.name);
-								write_msg(games[game_id].players[0].sock_fd, buf);
-								write_msg(games[game_id].players[1].sock_fd, buf);
-								break;
-							}
-							else if (check_draw(games[game_id].board))
-							{
-							 					// Announce draw
-								sprintf(buf, "DRAW\n");
-								write_msg(games[game_id].players[0].sock_fd, buf);
-								write_msg(games[game_id].players[1].sock_fd, buf);
-								break;
-							}
+							write_msg(client_fd, "INV Not your turn");
 						}
 						else
 						{
-						 				// Invalid move (cell already occupied)
-							write_msg(client_fd, format_message(MSG_INVL, "!INVALID MOVE"));
-						}
+						 	// TODO: process and update the game state based on the move
+							// send updated game state back to both clients
+							int row = pos[0] - '1';
+							int col = pos[2] - '1';
+							int index = row *3 + col;
+							if (games[game_id].board[index] == '.')
+							{
+								games[game_id].board[index] = player.role;
 
-						sprintf(buf, "UPDATE %s\n", games[game_id].board);
-						write_msg(games[game_id].players[0].sock_fd, buf);
-						write_msg(games[game_id].players[1].sock_fd, buf);
+								// Check for win condition
+								if (check_win(games[game_id].board))
+								{
+								 	// Announce winner
+                                    if(strcmp(player.name, games[game_id].players[0].name) == 0)
+                                    {
+                                        sprintf(buf, "OVER L %s won\n", games[game_id].players[0].name);
+                                        write_msg(games[game_id].players[1].sock_fd, buf);
+                                        sprintf(buf, "OVER W %s won\n", games[game_id].players[0].name);
+                                        write_msg(games[game_id].players[0].sock_fd, buf);
+                                        break;
+                                    }
+                                    else if(strcmp(player.name, games[game_id].players[1].name) == 0)
+                                    {
+                                        sprintf(buf, "OVER L %s won\n", games[game_id].players[1].name);
+                                        write_msg(games[game_id].players[1].sock_fd, buf);
+                                        sprintf(buf, "OVER W %s won\n", games[game_id].players[1].name);
+                                        write_msg(games[game_id].players[0].sock_fd, buf);
+                                        break;
+                                    }
+								}
+								else if (check_draw(games[game_id].board))
+								{
+								 	// Announce draw
+									sprintf(buf, "OVER D Game has ended in a draw.\n");
+									write_msg(games[game_id].players[0].sock_fd, buf);
+									write_msg(games[game_id].players[1].sock_fd, buf);
+									break;
+								}
+
+								if (games[game_id].current_turn == player_index)
+								{
+									sprintf(buf, "MOVD %s %s %s\n", role, pos, games[game_id].board);
+									write_msg(games[game_id].players[0].sock_fd, buf);
+									write_msg(games[game_id].players[1].sock_fd, buf);
+								}
+
+								// Update current turn
+								games[game_id].current_turn = 1 - games[game_id].current_turn;
+							}
+							else
+							{
+							 					// Invalid move (cell already occupied) - inform player
+								write_msg(client_fd, "!INVALID MOVE: Cell already occupied");
+							}
+
+							// Send updated game state to both players
+
+						}
 					}
 				}
 			}
+            else if (strcmp(cmd, "RSGN") == 0)
+            {
+                close(client_fd);
+                return NULL;
+            }
+            else if (strcmp(cmd, "DRAW") == 0)
+            {
+                // Send other client draw request or process the draw response
+                int player_index = (player.role == games[game_id].players[0].role) ? 0 : 1;
+                int other_player_index = 1 - player_index;
+                if (strcmp(msg, "S") == 0)
+                {
+                    // Send draw request to the other player
+                    write_msg(games[game_id].players[other_player_index].sock_fd, "DRAW S");
+                }
+                else if (strcmp(msg, "A") == 0)
+                {
+                    // The current player accepted the draw request, inform both players
+                    sprintf(buf, "OVER D Game has ended in a draw.\n");
+                    write_msg(games[game_id].players[0].sock_fd, buf);
+                    write_msg(games[game_id].players[1].sock_fd, buf);
+                }
+                else if (strcmp(msg, "R") == 0)
+                {
+                    // The current player declined the draw request, inform the other player
+                    write_msg(games[game_id].players[other_player_index].sock_fd, "DRAW R");
+                }
+            }
 		}
+        else if(sscanf(buf, "%s %[^\n]", cmd, msg) == 1){
+            if (strcmp(cmd, "RSGN") == 0)
+            {
+                
+                if(strcmp(player.name, games[game_id].players[1].name) == 0)
+                {
+                    sprintf(buf, "OVER L %s won %s resigned\n", games[game_id].players[0].name, games[game_id].players[1].name);
+                    write_msg(games[game_id].players[0].sock_fd, buf);
+                    sprintf(buf, "OVER W %s won %s resigned\n", games[game_id].players[0].name, games[game_id].players[1].name);
+                    write_msg(games[game_id].players[1].sock_fd, buf);
+                    break;
+                }
+                else if(strcmp(player.name, games[game_id].players[0].name) == 0)
+                {
+                    sprintf(buf, "OVER L %s won %s resigned\n", games[game_id].players[1].name, games[game_id].players[0].name);
+                    write_msg(games[game_id].players[0].sock_fd, buf);
+                    sprintf(buf, "OVER W %s won %s resigned\n", games[game_id].players[1].name, games[game_id].players[0].name);
+                    write_msg(games[game_id].players[1].sock_fd, buf);
+                    break;
+                }
+                close(client_fd);
+                return NULL;
+            }
+        }
 		else
 		{
 			printf("Invalid command.\n");
@@ -282,15 +364,15 @@ void *handle_client(void *arg)
 	if (game_id != -1)
 	{
 		// inform the other player that the game has ended
-		char buf[256];	// increase buffer size
+		char buf[2500];	// increase buffer size
 		if (client_fd == games[game_id].players[0].sock_fd && games[game_id].players[1].sock_fd != -1)
 		{
-			snprintf(buf, sizeof(buf), "OVER W Player %s disconnected.\n", games[game_id].players[0].name);
+			snprintf(buf, sizeof(buf), "Player %s disconnected.\n", games[game_id].players[0].name);
 			write_msg(games[game_id].players[1].sock_fd, buf);
 		}
 		else if (client_fd == games[game_id].players[1].sock_fd && games[game_id].players[0].sock_fd != -1)
 		{
-			snprintf(buf, sizeof(buf), "OVER W Player %s disconnected.\n", games[game_id].players[1].name);
+			snprintf(buf, sizeof(buf), "Player %s disconnected.\n", games[game_id].players[1].name);
 			write_msg(games[game_id].players[0].sock_fd, buf);
 		}
 
@@ -358,7 +440,7 @@ void *handle_client(void *arg)
 
 					if (games[i].status == 0 && games[i].players[0].sock_fd == -1)
 					{
-					 			// take over empty slot in other game
+					 	// take over empty slot in other game
 						games[i].players[0] = games[game_id].players[0];
 						games[i].status = 1;
 						pthread_mutex_unlock(&game_lock);
