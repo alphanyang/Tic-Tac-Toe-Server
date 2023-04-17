@@ -30,7 +30,6 @@ typedef struct
 	char board[BOARD_SIZE];
 	int current_turn;
 }
-
 game_t;
 
 game_t games[MAX_CLIENTS];
@@ -64,68 +63,6 @@ int check_name(char *name)
 	}
 
 	pthread_mutex_unlock(&player_name_lock);
-	return 1;
-}
-
-int validaate_move(char *move)
-{
-	if (strlen(move) == 2)
-	{
-		int row = move[0] - '1';
-		int col = move[1] - '1';
-		if (row >= 0 && row < 3 && col >= 0 && col < 3)
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-int check_win(char board[BOARD_SIZE])
-{
-	// Check rows
-	for (int i = 0; i < 3; i++)
-	{
-		if (board[i *3] == board[i *3 + 1] && board[i *3] == board[i *3 + 2] && board[i *3] != '.')
-		{
-			return 1;
-		}
-	}
-
-	// Check columns
-	for (int i = 0; i < 3; i++)
-	{
-		if (board[i] == board[i + 3] && board[i] == board[i + 6] && board[i] != '.')
-		{
-			return 1;
-		}
-	}
-
-	// Check diagonals
-	if (board[0] == board[4] && board[0] == board[8] && board[0] != '.')
-	{
-		return 1;
-	}
-
-	if (board[2] == board[4] && board[2] == board[6] && board[2] != '.')
-	{
-		return 1;
-	}
-
-	return 0;
-}
-
-int check_draw(char board[BOARD_SIZE])
-{
-	for (int i = 0; i < BOARD_SIZE; i++)
-	{
-		if (board[i] == '.')
-		{
-			return 0;
-		}
-	}
-
 	return 1;
 }
 
@@ -457,17 +394,15 @@ void *handle_client(void *arg)
 				 		// remove empty game from list
 					num_games--;
 				}
-				else
-				{
-				 		// move last game in list to empty spot
+				else{
+				 	//move last game in list to empty spot
 					games[game_id] = games[num_games - 1];
 					num_games--;
 				}
 
 				pthread_mutex_unlock(&game_lock);
 			}
-			else
-			{
+			else{
 			 	// player 1 disconnected during game
 				games[game_id].players[1].sock_fd = -1;
 				pthread_mutex_unlock(&games[game_id].lock);
@@ -484,8 +419,7 @@ void *handle_client(void *arg)
 	return NULL;
 }
 
-int main()
-{
+int main(){
 	int server_fd, client_fd;
 	struct sockaddr_in address;
 	int addrlen = sizeof(address);
@@ -493,16 +427,14 @@ int main()
 
 	// create server socket
 	server_fd = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_fd < 0)
-	{
+	if (server_fd < 0){
 		perror("socket");
 		exit(1);
 	}
 
 	// set SO_REUSEADDR option
 	int reuseaddr = 1;
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) < 0)
-	{
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr)) < 0){
 		perror("setsockopt");
 		exit(1);
 	}
@@ -513,15 +445,13 @@ int main()
 	address.sin_port = htons(PORT);
 
 	// bind server socket to address
-	if (bind(server_fd, (struct sockaddr *) &address, sizeof(address)) < 0)
-	{
+	if (bind(server_fd, (struct sockaddr *) &address, sizeof(address)) < 0){
 		perror("bind");
 		exit(1);
 	}
 
 	// start listening for connections
-	if (listen(server_fd, MAX_CLIENTS) < 0)
-	{
+	if (listen(server_fd, MAX_CLIENTS) < 0){
 		perror("listen");
 		exit(1);
 	}
@@ -530,8 +460,7 @@ int main()
 	{
 		// accept client connection
 		client_fd = accept(server_fd, (struct sockaddr *) &address, (socklen_t*) &addrlen);
-		if (client_fd < 0)
-		{
+		if (client_fd < 0) {
 			perror("accept");
 			exit(1);
 		}
@@ -539,14 +468,12 @@ int main()
 		int *client_fd_ptr = malloc(sizeof(int));
 		*client_fd_ptr = client_fd;
 		// create thread to handle client
-		if (pthread_create(&client_thread, NULL, handle_client, client_fd_ptr) != 0)
-		{
+		if (pthread_create(&client_thread, NULL, handle_client, client_fd_ptr) != 0) {
 			perror("pthread_create");
 			exit(1);
 		}
 
-		if (pthread_mutex_init(&player_name_lock, NULL) != 0)
-		{
+		if (pthread_mutex_init(&player_name_lock, NULL) != 0) {
 			perror("pthread_mutex_init");
 			exit(1);
 		}
