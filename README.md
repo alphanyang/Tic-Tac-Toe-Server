@@ -1,6 +1,7 @@
 # Contributors
--Alphan Yang ay329
--Lily Xing
+Alphan Yang ay329
+
+Lily Xing
 
 # Tic-Tac-Toe Server
 
@@ -66,19 +67,31 @@ Once the client is connected to the server, it will read user input from the con
 The client can handle the following commands from the user:
 
 PLAY <message>: Sends a message to the server with the given message.
+  
 MOVE <role> <pos>: Sends a move to the server, where role is either X or O, and pos is the position to place the move in.
+  
 DRAW A: Accepts a draw request from the opponent.
+  
 DRAW R: Rejects a draw request from the opponent.
+  
 RSGN: Resigns from the game.
+  
 The client can handle the following messages from the server:
 
 WAIT: Informs the client that it is waiting for another player to join the game.
+  
 BEGN <role> <opponent_name>: Informs the client that the game has started, and provides the client's role and the name of the opponent.
+  
 MOVD <role> <pos> <grid>: Informs the client that a move has been made by the given role at the given position, and provides the current state of the grid.
+  
 INVL <reason>: Informs the client that a move or message was invalid, and provides a reason for the invalidity.
+  
 DRAW S: Informs the client that the opponent has suggested a draw.
+  
 DRAW R: Informs the client that the opponent has rejected a draw request.
+  
 OVER <result>: Informs the client that the game is over, and provides the result of the game.
+  
 
 # Protocol
 
