@@ -65,6 +65,40 @@ int validaate_move(char *move) {
     return 0;
 }
 
+int check_win(char board[BOARD_SIZE]) {
+    // Check rows
+    for (int i = 0; i < 3; i++) {
+        if (board[i * 3] == board[i * 3 + 1] && board[i * 3] == board[i * 3 + 2] && board[i * 3] != '.') {
+            return 1;
+        }
+    }
+
+    // Check columns
+    for (int i = 0; i < 3; i++) {
+        if (board[i] == board[i + 3] && board[i] == board[i + 6] && board[i] != '.') {
+            return 1;
+        }
+    }
+
+    // Check diagonals
+    if (board[0] == board[4] && board[0] == board[8] && board[0] != '.') {
+        return 1;
+    }
+    if (board[2] == board[4] && board[2] == board[6] && board[2] != '.') {
+        return 1;
+    }
+
+    return 0;
+}
+
+int check_draw(char board[BOARD_SIZE]) {
+    for (int i = 0; i < BOARD_SIZE; i++) {
+        if (board[i] == '.') {
+            return 0;
+        }
+    }
+    return 1;
+}
 
 void *handle_client(void *arg) {
     int client_fd = *((int*)arg);
@@ -104,9 +138,9 @@ void *handle_client(void *arg) {
             games[i].players[1] = player;
             games[i].status = 1;
             pthread_mutex_unlock(&game_lock);
-            sprintf(buf, "BEGN %c %s\n", games[i].players[0].role, games[i].players[0].name);
+            sprintf(buf, "BEGN %c %s\n", games[i].players[1].role, games[i].players[0].name);
             write_msg(games[i].players[1].sock_fd, buf);
-            sprintf(buf, "BEGN %c %s\n", games[i].players[1].role, games[i].players[1].name);
+            sprintf(buf, "BEGN %c %s\n", games[i].players[0].role, games[i].players[1].name);
             write_msg(games[i].players[0].sock_fd, buf);
             break;
         }
@@ -130,6 +164,7 @@ void *handle_client(void *arg) {
     // read player moves
     while (1) {
         buf = receive_msg(client_fd);
+        printf("Received message: %s\n", buf);
         if (buf == NULL) {
             printf("Connection dropped by client %d\n", client_fd);
             close(client_fd);
@@ -137,7 +172,6 @@ void *handle_client(void *arg) {
             break;
         }
 
-        int row, col;
         if (strlen(buf) == 0) {
             // player disconnected
             printf("PLAYER DISCONNECTED\n");
@@ -150,6 +184,7 @@ void *handle_client(void *arg) {
                 char pos[50];
                 char role[2];
                 if (sscanf(msg, "%s %s", role, pos) == 2) {
+                    printf("Received move: %s %s\n", role, pos);
                     if (validate_move(pos) == 0) {
                         perror("Error reading player move");
                         write_msg(client_fd, format_message(MSG_INVL, "!INVALID MOVE"));
@@ -157,6 +192,30 @@ void *handle_client(void *arg) {
                     } else {
                         // TODO: process and update the game state based on the move
                         // send updated game state back to both clients
+                        int row = pos[0] - '1';
+                        int col = pos[2] - '1';
+                        int index = row * 3 + col;
+                        if (games[game_id].board[index] == '.') {
+                            games[game_id].board[index] = player.role;
+
+                            // Check for win condition
+                            if (check_win(games[game_id].board)) {
+                                // Announce winner
+                                sprintf(buf, "WINNER %s\n", player.name);
+                                write_msg(games[game_id].players[0].sock_fd, buf);
+                                write_msg(games[game_id].players[1].sock_fd, buf);
+                                break;
+                            } else if (check_draw(games[game_id].board)) {
+                                // Announce draw
+                                sprintf(buf, "DRAW\n");
+                                write_msg(games[game_id].players[0].sock_fd, buf);
+                                write_msg(games[game_id].players[1].sock_fd, buf);
+                                break;
+                            }
+                        } else {
+                            // Invalid move (cell already occupied)
+                            write_msg(client_fd, format_message(MSG_INVL, "!INVALID MOVE"));
+                        }
                         sprintf(buf, "UPDATE %s\n", games[game_id].board);
                         write_msg(games[game_id].players[0].sock_fd, buf);
                         write_msg(games[game_id].players[1].sock_fd, buf);
