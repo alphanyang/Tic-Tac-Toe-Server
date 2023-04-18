@@ -176,14 +176,28 @@ void handle_server_messages(int server_fd)
 				{
                     //printf("%s", response);
 					printf("OVER %s\n", server_response);
-					if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
-						for(int r = 0; r < 3; r++){
-							for(int c = 0; c < 3; c++){
-								printf("%c ", grid[r*3 + c]);
+					//check if server response contains resigned else dont print grid
+					char *resigned = strrchr(server_response, ' ');
+					//printf("%s", resigned);
+					if(resigned && !strcmp(resigned, "resigned")){
+						if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
+							for(int r = 0; r < 3; r++){
+								for(int c = 0; c < 3; c++){
+									printf("%c ", grid[r*3 + c]);
+								}
+								printf("\n");
 							}
-							printf("\n");
 						}
 					}
+					break;
+					// if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
+					// 	for(int r = 0; r < 3; r++){
+					// 		for(int c = 0; c < 3; c++){
+					// 			printf("%c ", grid[r*3 + c]);
+					// 		}
+					// 		printf("\n");
+					// 	}
+					// }
                     break;
 				}
 				else

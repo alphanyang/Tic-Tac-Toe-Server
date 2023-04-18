@@ -240,11 +240,12 @@ void *handle_client(void *arg)
 					}
 				}
 			}
-            else if (strcmp(cmd, "RSGN") == 0)
-            {
-                close(client_fd);
-                return NULL;
-            }
+            // else if (strcmp(cmd, "RSGN") == 0)
+            // {
+			// 	// Inform other player that the current player resigned
+            //     close(client_fd);
+            //     return NULL;
+            // }
             else if (strcmp(cmd, "DRAW") == 0)
             {
                 // Send other client draw request or process the draw response
@@ -395,7 +396,7 @@ void *handle_client(void *arg)
 
 				if (game_id == num_games - 1)
 				{
-				 		// remove empty game from list
+				 	// remove empty game from list
 					num_games--;
 				}
 				else{
