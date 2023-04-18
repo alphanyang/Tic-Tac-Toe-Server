@@ -157,13 +157,16 @@ void *handle_client(void *arg)
 			if (strcmp(cmd, "MOVE") == 0)
 			{
 				char pos[50];
-				char role[2];
-				if (sscanf(msg, "%s %s", role, pos) == 2)
+				char role;
+				if (sscanf(msg, "%c %s", &role, pos) == 2)
 				{
-					printf("Received move: %s %s\n", role, pos);
+					printf("Received move: %c %s\n", role, pos);
 					if (validate_move(pos) == 0)
 					{
 						write_msg(client_fd, "!INVALID MOVE: Cell out of bounds");
+					}
+					else if(role!=player.role){
+						write_msg(client_fd, "!INVALID MOVE: Not your role");
 					}
 					else
 					{
@@ -220,7 +223,7 @@ void *handle_client(void *arg)
 
 								if (games[game_id].current_turn == player_index)
 								{
-									sprintf(buf, "MOVD %s %s %s\n", role, pos, games[game_id].board);
+									sprintf(buf, "MOVD %c %s %s\n", role, pos, games[game_id].board);
 									write_msg(games[game_id].players[0].sock_fd, buf);
 									write_msg(games[game_id].players[1].sock_fd, buf);
 								}
