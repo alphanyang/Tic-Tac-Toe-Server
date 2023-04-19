@@ -1,0 +1,26 @@
+1 game:
+	full game - draw
+	full game - x wins
+	full game - o wins
+	x resigns
+	o resigns
+	x draw - o rejects - o resigns
+	o draw - x rejects - finish game
+	x draw - o accepts
+	o draw - x accepts
+	o resigns during x's turn
+	x suggests draw during o's turn
+2 games:
+	one game makes 2 moves before resigning, other game plays a full game
+3 games:
+	one game makes 2 moves before drawing, one game makes 5 moves before resigning, other game plays full game
+inputs used to test errors:
+	making move in occupied spot
+	making move when it is other player's turn
+	ELSIJVBSENLRI	-	nonexistent command
+	PLAY|6|HELLO	-	message does not end in '|'
+	PLAY|1|HELLO|	-	message length is incorrect
+	MOVE|6|P|2,2|	-	message with incorrect parameters
+	MOVE|HELLO|		-	message with incorrect parameters
+	MOVE|6|X|4,8|	-	making move in spot out of bounds
+	MOVE|6|X|-1,-12|	-	making move in spot out of bounds
