@@ -190,15 +190,6 @@ void handle_server_messages(int server_fd)
 						}
 					}
 					break;
-					// if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
-					// 	for(int r = 0; r < 3; r++){
-					// 		for(int c = 0; c < 3; c++){
-					// 			printf("%c ", grid[r*3 + c]);
-					// 		}
-					// 		printf("\n");
-					// 	}
-					// }
-                    break;
 				}
 				else
 				{
@@ -208,6 +199,13 @@ void handle_server_messages(int server_fd)
 			else
 			{
 				printf("%s\n", response);
+			}
+
+			if (strstr(response, "disconnected") != NULL)
+			{
+				printf("OVER W You win.\n");
+				close(server_fd);
+				exit(EXIT_SUCCESS);
 			}
 
 			free(response);

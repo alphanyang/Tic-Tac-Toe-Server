@@ -312,12 +312,12 @@ void *handle_client(void *arg)
 		char buf[2500];	// increase buffer size
 		if (client_fd == games[game_id].players[0].sock_fd && games[game_id].players[1].sock_fd != -1)
 		{
-			snprintf(buf, sizeof(buf), "Player %s disconnected.\n", games[game_id].players[0].name);
+			snprintf(buf, sizeof(buf), "Player %s disconnected.", games[game_id].players[0].name);
 			write_msg(games[game_id].players[1].sock_fd, buf);
 		}
 		else if (client_fd == games[game_id].players[1].sock_fd && games[game_id].players[0].sock_fd != -1)
 		{
-			snprintf(buf, sizeof(buf), "Player %s disconnected.\n", games[game_id].players[1].name);
+			snprintf(buf, sizeof(buf), "Player %s disconnected.", games[game_id].players[1].name);
 			write_msg(games[game_id].players[0].sock_fd, buf);
 		}
 
