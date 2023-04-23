@@ -53,6 +53,7 @@ void handle_user_input(int server_fd)
         {
             write_msg(server_fd, input);
         }
+		else printf("Invalid command.\n");
     }
     else{
         printf("Invalid command.\n");
@@ -61,9 +62,6 @@ void handle_user_input(int server_fd)
 
 void handle_server_messages(int server_fd)
 {
-	// char input[250];
-	// char command[10];
-	// char msg[50];
 
 	while (1)
 	{
@@ -136,7 +134,6 @@ void handle_server_messages(int server_fd)
 							}
 							printf("\n");
 						}
-						//printf("%c made a move: %s\n", moved_role, grid);
                         if (role == moved_role) // Compare characters directly, without using '&'
                         {
                             printf("Waiting for %s to make a move.\n", opponent_name);
@@ -154,7 +151,6 @@ void handle_server_messages(int server_fd)
 					{
 						printf("Invalid move or message: %s\n", reason);
                         // Call the function to get another input from the user
-                        //handle_user_input(server_fd);
 					}
 				}
 				else if (strcmp(cmd, "DRAW") == 0)
@@ -174,11 +170,9 @@ void handle_server_messages(int server_fd)
 				}
 				else if (strcmp(cmd, "OVER") == 0)
 				{
-                    //printf("%s", response);
 					printf("OVER %s\n", server_response);
 					//check if server response contains resigned else dont print grid
 					char *resigned = strrchr(server_response, ' ');
-					//printf("%s", resigned);
 					if(resigned && !strcmp(resigned, "resigned")){
 						if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
 							for(int r = 0; r < 3; r++){
