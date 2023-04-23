@@ -163,10 +163,10 @@ void *handle_client(void *arg)
 					printf("Received move: %c %s\n", role, pos);
 					if (validate_move(pos) == 0)
 					{
-						write_msg(client_fd, "!INVALID MOVE: Cell out of bounds");
+						write_msg(client_fd, "INVL Cell out of bounds");
 					}
 					else if(role!=player.role){
-						write_msg(client_fd, "!INVALID MOVE: Not your role");
+						write_msg(client_fd, "INVL Not your role");
 					}
 					else
 					{
@@ -174,7 +174,7 @@ void *handle_client(void *arg)
 						int player_index = (player.role == games[game_id].players[0].role) ? 0 : 1;
 						if (games[game_id].current_turn != player_index)
 						{
-							write_msg(client_fd, "INV Not your turn");
+							write_msg(client_fd, "INVL Not your turn");
 						}
 						else
 						{
@@ -202,12 +202,9 @@ void *handle_client(void *arg)
                                     else if(strcmp(player.name, games[game_id].players[1].name) == 0)
                                     {
 										//send final board
-										// sprintf(buf, "MOVD %s %s %s\n", role, pos, games[game_id].board);
-										// write_msg(games[game_id].players[0].sock_fd, buf);
-										// write_msg(games[game_id].players[1].sock_fd, buf);
                                         sprintf(buf, "OVER W %s won\n%s\n", games[game_id].players[1].name,  games[game_id].board);
                                         write_msg(games[game_id].players[1].sock_fd, buf);
-                                        sprintf(buf, "OVER W %s won\n%s\n", games[game_id].players[1].name,  games[game_id].board);
+                                        sprintf(buf, "OVER L %s won\n%s\n", games[game_id].players[1].name,  games[game_id].board);
                                         write_msg(games[game_id].players[0].sock_fd, buf);
                                         break;
                                     }
@@ -233,8 +230,8 @@ void *handle_client(void *arg)
 							}
 							else
 							{
-							 					// Invalid move (cell already occupied) - inform player
-								write_msg(client_fd, "!INVALID MOVE: Cell already occupied");
+							 	// Invalid move (cell already occupied) - inform player
+								write_msg(client_fd, "INVL Cell already occupied");
 							}
 
 							// Send updated game state to both players
@@ -242,13 +239,8 @@ void *handle_client(void *arg)
 						}
 					}
 				}
+				else write_msg(client_fd, "INVL Invalid command");
 			}
-            // else if (strcmp(cmd, "RSGN") == 0)
-            // {
-			// 	// Inform other player that the current player resigned
-            //     close(client_fd);
-            //     return NULL;
-            // }
             else if (strcmp(cmd, "DRAW") == 0)
             {
                 // Send other client draw request or process the draw response
@@ -271,6 +263,7 @@ void *handle_client(void *arg)
                     // The current player declined the draw request, inform the other player
                     write_msg(games[game_id].players[other_player_index].sock_fd, "DRAW R");
                 }
+				else write_msg(client_fd, "INVL Invalid parameter");
             }
 		}
         else if(sscanf(buf, "%s %[^\n]", cmd, msg) == 1){
@@ -279,9 +272,9 @@ void *handle_client(void *arg)
                 
                 if(strcmp(player.name, games[game_id].players[1].name) == 0)
                 {
-                    sprintf(buf, "OVER L %s won %s resigned\n", games[game_id].players[0].name, games[game_id].players[1].name);
-                    write_msg(games[game_id].players[0].sock_fd, buf);
                     sprintf(buf, "OVER W %s won %s resigned\n", games[game_id].players[0].name, games[game_id].players[1].name);
+                    write_msg(games[game_id].players[0].sock_fd, buf);
+                    sprintf(buf, "OVER L %s won %s resigned\n", games[game_id].players[0].name, games[game_id].players[1].name);
                     write_msg(games[game_id].players[1].sock_fd, buf);
                     break;
                 }
@@ -350,12 +343,12 @@ void *handle_client(void *arg)
 
 				if (game_id == num_games - 1)
 				{
-				 		// remove empty game from list
+				 	// remove empty game from list
 					num_games--;
 				}
 				else
 				{
-				 		// move last game in list to empty spot
+				 	// move last game in list to empty spot
 					games[game_id] = games[num_games - 1];
 					num_games--;
 				}
