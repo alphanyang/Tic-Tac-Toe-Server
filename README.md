@@ -1,7 +1,7 @@
 # Contributors
 Alphan Yang ay329
 
-Lily Xing
+Lily Xing lx134
 
 # Tic-Tac-Toe Server
 
@@ -121,3 +121,33 @@ This function checks if a player has won the game. It takes in the current state
 ### check_draw
 This function checks if the game has ended in a draw. It takes in the current state of the grid as a string board and
 
+# Testing
+
+## 1 game:
+    - full game - draw
+    - full game - x wins
+    - full game - o wins
+    - x resigns
+    - o resigns
+    - x draw - o rejects - o resigns
+    - o draw - x rejects - finish game
+    - x draw - o accepts
+    - o draw - x accepts
+    - o resigns during x's turn
+    - x suggests draw during o's turn
+## 2 games:
+    - one game makes 2 moves before resigning, other game plays a full game
+## 3 games:
+    - one game makes 2 moves before drawing, one game makes 5 moves before resigning, other game plays full game
+## inputs used to test errors:
+    - trying to play with a name that is already taken
+    - making move in occupied spot
+    - making move when it is other player's turn
+    - ELSIJVBSDRI    -    nonexistent command
+    - RSGN EJIRGE    -    message with incorrect parameters
+    - DRAW ERHBG    -    message with incorrect parameters
+    - MOVE X        -    message with incorrect parameters
+    - MOVE P 2,2    -    message with incorrect parameters
+    - MOVE HELLO    -    message with incorrect parameters
+    - MOVE X 4,8    -    making move in spot out of bounds
+    - MOVE X -1,-12    -    making move in spot out of bounds
