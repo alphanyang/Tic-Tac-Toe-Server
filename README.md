@@ -136,9 +136,12 @@ This function checks if the game has ended in a draw. It takes in the current st
     - o resigns during x's turn
     - x suggests draw during o's turn
 ## 2 games:
-    - one game makes 2 moves before resigning, other game plays a full game
+    - one game makes 2 moves before resigning
+    - other game plays a full game
 ## 3 games:
-    - one game makes 2 moves before drawing, one game makes 5 moves before resigning, other game plays full game
+    - one game makes 2 moves before drawing
+    - one game makes 5 moves before resigning
+    - other game plays full game
 ## inputs used to test errors:
     - trying to play with a name that is already taken
     - making move in occupied spot
