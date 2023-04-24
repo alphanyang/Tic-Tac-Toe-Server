@@ -287,6 +287,7 @@ void *handle_client(void *arg)
                     break;
                 }
                 close(client_fd);
+				pthread_mutex_unlock(&games[game_id].lock);
                 return NULL;
             }
         }
@@ -329,13 +330,13 @@ void *handle_client(void *arg)
 
 					if (games[i].status == 0 && games[i].players[0].sock_fd == -1)
 					{
-					 			// take over empty slot in other game
+					 	// take over empty slot in other game
 						games[i].players[0] = games[game_id].players[1];
 						games[i].status = 1;
 						pthread_mutex_unlock(&game_lock);
-						sprintf(buf, "START %s\n", games[i].players[0].name);
+						sprintf(buf, "BEGN %s\n", games[i].players[0].name);
 						write_msg(games[i].players[1].sock_fd, buf);
-						sprintf(buf, "START %s\n", games[i].players[1].name);
+						sprintf(buf, "BEGN %s\n", games[i].players[1].name);
 						write_msg(games[i].players[0].sock_fd, buf);
 						break;
 					}
@@ -382,9 +383,9 @@ void *handle_client(void *arg)
 						games[i].players[0] = games[game_id].players[0];
 						games[i].status = 1;
 						pthread_mutex_unlock(&game_lock);
-						sprintf(buf, "START %s\n", games[i].players[0].name);
+						sprintf(buf, "BEGN %s\n", games[i].players[0].name);
 						write_msg(games[i].players[1].sock_fd, buf);
-						sprintf(buf, "START %s\n", games[i].players[1].name);
+						sprintf(buf, "BEGN %s\n", games[i].players[1].name);
 						write_msg(games[i].players[0].sock_fd, buf);
 						break;
 					}

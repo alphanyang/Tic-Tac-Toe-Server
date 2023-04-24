@@ -172,8 +172,8 @@ void handle_server_messages(int server_fd)
 				{
 					printf("OVER %s\n", server_response);
 					//check if server response contains resigned else dont print grid
-					char *resigned = strrchr(server_response, ' ');
-					if(resigned && !strcmp(resigned, "resigned")){
+					//char *resigned = strrchr(server_response, ' ');
+					if(!strstr(response, "resigned")){
 						if(sscanf(response, "OVER %[^\n]%s", cmd, grid) == 2){
 							for(int r = 0; r < 3; r++){
 								for(int c = 0; c < 3; c++){
